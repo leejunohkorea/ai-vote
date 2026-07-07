@@ -80,6 +80,21 @@
     .stat{background:white;border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center;box-shadow:var(--shadow)}
     .stat b{font-size:26px;display:block}
     .resultCard h3{font-size:18px;margin:0 0 12px;line-height:1.3}
+    .orgInsight{
+      background:linear-gradient(135deg,#0f172a,#1e40af);color:white;border-radius:24px;
+      padding:20px;margin:14px 0;box-shadow:var(--shadow);
+    }
+    .orgInsight h2{margin:0 0 8px;font-size:24px}
+    .orgInsight p{color:#dbeafe;margin:6px 0 0}
+    .categoryGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+    .catCard{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:18px;padding:14px}
+    .catCard b{display:block;font-size:28px;margin:5px 0}
+    .catCard strong{font-size:15px}
+    .catCard span{font-size:13px;color:#dbeafe;display:block;line-height:1.45}
+    .interpretBox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:18px;padding:15px;margin:12px 0}
+    .interpretBox h3{margin:0 0 8px;font-size:17px}
+    .interpretBox p{margin:6px 0;color:#334155}
+    .interpretBox .tag{display:inline-block;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:5px 9px;font-weight:900;font-size:12px;margin-bottom:6px}
     .bars{display:grid;gap:10px}
     .barRow{display:grid;grid-template-columns:70px 1fr 58px;gap:8px;align-items:center}
     .label{font-weight:900;font-size:14px}
@@ -107,6 +122,7 @@
       .situation{font-size:14px}
       .option{font-size:18px;padding:15px 12px}
       .statGrid{grid-template-columns:1fr}
+      .categoryGrid{grid-template-columns:1fr}
       .rowBtns{grid-template-columns:1fr}
       .barRow{grid-template-columns:64px 1fr 52px}
     }
@@ -140,6 +156,8 @@
       <div class="done">
         <h2>투표가 제출되었습니다.</h2>
         <p>참여해주셔서 감사합니다.</p>
+        <button class="submitBtn" id="revoteBtn" type="button">응답 수정하기</button>
+        <p class="small">※ 수정 제출하면 기존 응답을 덮어쓰기 때문에 중복 집계되지 않습니다.</p>
       </div>
     </main>
 
@@ -167,6 +185,7 @@
             <button class="adminBtn danger" id="resetBtn">전체 결과 초기화</button>
           </div>
         </div>
+        <div id="orgInsight"></div>
         <div id="results"></div>
         <div class="card">
           <h3>복사용 결과 요약</h3>
@@ -261,6 +280,56 @@ const questions = [
   }
 ];
 
+
+const categories = [
+  {
+    name:"AI 활용·성과 인식",
+    short:"AI를 성과와 생산성의 도구로 보는가",
+    qs:[1,4,5,6,10],
+    high:"이 조직은 AI를 업무성과와 생산성 향상의 도구로 받아들이는 경향이 강합니다. 다만 성과평가와 직무역량 기준을 어떻게 설계할지 명확히 하지 않으면 ‘AI를 잘 쓰는 사람만 유리한 조직’이라는 불공정 인식이 생길 수 있습니다.",
+    mid:"이 조직은 AI 활용의 필요성은 인정하지만, 성과·평가·업무시간 재배분 문제에서는 아직 합의가 충분하지 않습니다. 생산성 향상분을 조직성과로 연결하는 운영 원칙이 필요합니다.",
+    low:"이 조직은 AI를 성과 도구로 적극 수용하기보다 기존 업무방식과 개인의 자율성을 중시하는 경향이 큽니다. 급격한 도입보다 작은 성공사례를 통해 효용감을 먼저 만드는 접근이 적합합니다."
+  },
+  {
+    name:"AI 판단·신뢰 인식",
+    short:"AI의 판단과 산출물을 어디까지 믿는가",
+    qs:[2,3,6,7,8],
+    high:"이 조직은 AI의 판단과 산출물에 대해 비교적 높은 신뢰를 보입니다. 속도와 품질 개선에는 유리하지만, 검증 없는 제출·AI 평가·AI 면접 같은 영역에서는 책임소재와 편향 리스크 관리가 중요합니다.",
+    mid:"이 조직은 AI를 유용한 조력자로 보지만, 최종 판단은 사람이 해야 한다는 균형적 인식이 강합니다. 실무 적용에는 적합하나, 의사결정 기준과 검증 프로세스를 함께 설계해야 합니다.",
+    low:"이 조직은 AI 판단에 대한 신뢰가 낮고 인간의 경험·직관·권한을 더 중시하는 경향이 있습니다. AI를 대체자가 아니라 보조자·검토자·초안 생성자로 포지셔닝하는 것이 효과적입니다."
+  },
+  {
+    name:"AI 윤리·통제 인식",
+    short:"투명성·책임·감시·소유권을 얼마나 중시하는가",
+    qs:[0,11,12],
+    high:"이 조직은 AI 활용에서 투명성, 책임, 보안, 소유권 기준을 강하게 요구하는 경향이 있습니다. 안정적 도입에는 유리하지만, 과도한 통제는 직원의 실험과 자발적 활용을 위축시킬 수 있습니다.",
+    mid:"이 조직은 AI 윤리와 자율성 사이에서 균형을 찾고 있는 상태입니다. 공개 기준, 보안 기준, 아이디어 소유권 기준을 상황별로 구분해 제시하면 수용성이 높아질 가능성이 큽니다.",
+    low:"이 조직은 AI 활용의 투명성·통제보다 개인의 자율성과 실용성을 중시하는 경향이 큽니다. 단기 실행력은 높을 수 있지만, 보안·저작권·책임소재 문제가 뒤늦게 발생할 가능성이 있습니다."
+  }
+];
+
+function optionScore(questionIndex, selected){
+  const positiveMap = {
+    0:["찬성"],
+    1:["새로운 일을 해야 한다"],
+    2:["AI 의견"],
+    3:["개인","조직"],
+    4:["찬성"],
+    5:["직무역량 부족"],
+    6:["가능하다"],
+    7:["공정하다"],
+    8:["더 공정하다"],
+    9:["줄어든다"],
+    10:["그렇다"],
+    11:["볼 수 있어야 한다"],
+    12:["사용자","회사/조직"]
+  };
+  const arr = positiveMap[questionIndex] || [];
+  if(arr.includes(selected)) return 1;
+  if(selected === "유보") return 0.5;
+  return 0;
+}
+
 const isAdmin = new URLSearchParams(location.search).get("admin") === "1";
 const studentView = document.getElementById("studentView");
 const doneView = document.getElementById("doneView");
@@ -278,6 +347,13 @@ if(isAdmin){
     doneView.classList.remove("hidden");
   }
 }
+
+document.getElementById("revoteBtn")?.addEventListener("click", ()=>{
+  localStorage.removeItem("aiVoteSubmitted_" + SESSION_ID);
+  doneView.classList.add("hidden");
+  studentView.classList.remove("hidden");
+  window.scrollTo({top:0, behavior:"smooth"});
+});
 
 function renderVoteForm(){
   const form = document.getElementById("voteForm");
@@ -381,9 +457,111 @@ async function loadResults(){
   document.getElementById("totalAnswers").textContent = result.reduce((a,r)=>a+r.total,0);
   document.getElementById("lastLoaded").textContent = new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
 
+  renderOrgInsight(rows, result, totalPeople);
   renderResults(result, totalPeople);
-  document.getElementById("summaryBox").value = buildSummary(result, totalPeople);
+  document.getElementById("summaryBox").value = buildSummary(result, totalPeople) + "\n" + buildOrgInsightText(rows, result, totalPeople);
 }
+
+
+function getCategoryScores(rows){
+  return categories.map(cat=>{
+    let sum = 0, n = 0;
+    rows.forEach(r=>{
+      cat.qs.forEach(qi=>{
+        const val = r.answers?.[`q${qi}`];
+        if(val){
+          sum += optionScore(qi, val);
+          n += 1;
+        }
+      });
+    });
+    const score = n ? Math.round((sum / n) * 100) : 0;
+    let level = score >= 67 ? "high" : score >= 40 ? "mid" : "low";
+    return {...cat, score, level};
+  });
+}
+
+function getLevelLabel(level){
+  if(level === "high") return "높음";
+  if(level === "mid") return "중간";
+  return "낮음";
+}
+
+function renderOrgInsight(rows, result, totalPeople){
+  const box = document.getElementById("orgInsight");
+  if(!box) return;
+  const scores = getCategoryScores(rows);
+  const top = [...scores].sort((a,b)=>b.score-a.score)[0];
+  const bottom = [...scores].sort((a,b)=>a.score-b.score)[0];
+
+  box.innerHTML = `
+    <section class="orgInsight">
+      <h2>이 조직의 AI 인식 종합 해석</h2>
+      <p>총 ${totalPeople}명의 응답을 3가지 관점으로 묶어 해석했습니다.</p>
+      <div class="categoryGrid">
+        ${scores.map(s=>`
+          <div class="catCard">
+            <strong>${escapeHtml(s.name)}</strong>
+            <b>${s.score}점</b>
+            <span>${escapeHtml(s.short)} · ${getLevelLabel(s.level)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 10px">강사용 해석 포인트</h2>
+      <div class="interpretBox">
+        <span class="tag">가장 강한 인식</span>
+        <h3>${escapeHtml(top.name)} ${top.score}점</h3>
+        <p>${escapeHtml(top[top.level])}</p>
+      </div>
+      <div class="interpretBox">
+        <span class="tag">가장 약한 인식</span>
+        <h3>${escapeHtml(bottom.name)} ${bottom.score}점</h3>
+        <p>${escapeHtml(bottom[bottom.level])}</p>
+      </div>
+      <div class="interpretBox">
+        <span class="tag">강의 연결 멘트</span>
+        <p>${escapeHtml(makeFacilitatorComment(scores))}</p>
+      </div>
+    </section>
+  `;
+}
+
+function makeFacilitatorComment(scores){
+  const accept = scores.find(s=>s.name.includes("활용"));
+  const trust = scores.find(s=>s.name.includes("판단"));
+  const gov = scores.find(s=>s.name.includes("윤리"));
+  if(accept.score >= 67 && gov.score >= 67){
+    return "이 조직은 AI를 쓰자는 에너지도 높고, 동시에 기준과 책임도 중요하게 보는 조직입니다. 따라서 단순 사용법 교육보다 ‘어디까지 허용하고, 어디서 검증할 것인가’라는 운영원칙 설계가 핵심입니다.";
+  }
+  if(accept.score >= 67 && gov.score < 40){
+    return "이 조직은 AI 활용 의지는 높지만 통제·윤리 기준은 상대적으로 약합니다. 속도는 빠를 수 있지만 보안, 저작권, 책임소재 리스크를 반드시 함께 다뤄야 합니다.";
+  }
+  if(accept.score < 40 && trust.score < 40){
+    return "이 조직은 AI를 아직 낯설거나 위험한 도구로 인식할 가능성이 큽니다. 강한 도입 압박보다 작은 업무 개선 사례를 통해 ‘써보니 도움이 된다’는 경험을 만드는 것이 먼저입니다.";
+  }
+  if(trust.score >= 67 && gov.score < 40){
+    return "이 조직은 AI의 결과물을 꽤 신뢰하지만, 검증과 책임 기준은 약할 수 있습니다. AI 결과물을 그대로 믿기보다 출처 확인, 사실 검증, 최종 책임자 기준을 세우는 것이 중요합니다.";
+  }
+  return "이 조직은 AI에 대해 일방적 찬성이나 반대보다 상황별 판단이 강한 편입니다. 따라서 AI를 무조건 쓰자/막자가 아니라, 업무유형별 활용 기준을 함께 합의하는 방식이 적합합니다.";
+}
+
+function buildOrgInsightText(rows, result, totalPeople){
+  const scores = getCategoryScores(rows);
+  let lines = [];
+  lines.push("");
+  lines.push("[조직 AI 인식 종합 해석]");
+  scores.forEach(s=>{
+    lines.push(`- ${s.name}: ${s.score}점 (${getLevelLabel(s.level)})`);
+    lines.push(`  해석: ${s[s.level]}`);
+  });
+  lines.push("");
+  lines.push(`강의 연결 멘트: ${makeFacilitatorComment(scores)}`);
+  return lines.join("\n");
+}
+
 
 function renderResults(result, totalPeople){
   const results = document.getElementById("results");
