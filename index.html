@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>AI 활용 찬반 투표</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <style>
+    :root{
+      --bg:#f6f7fb; --card:#fff; --text:#111827; --sub:#6b7280;
+      --line:#e5e7eb; --blue:#2563eb; --blue2:#1d4ed8;
+      --green:#16a34a; --red:#dc2626; --gray:#64748b;
+      --shadow:0 10px 28px rgba(15,23,42,.08);
+      --radius:22px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",Arial,sans-serif;
+      background:var(--bg); color:var(--text); line-height:1.45;
+    }
+    .wrap{max-width:920px;margin:0 auto;padding:18px 14px 80px}
+    .hero{
+      background:linear-gradient(135deg,#111827,#1e3a8a);
+      color:white;border-radius:0 0 28px 28px;margin:0 -14px 18px;padding:30px 18px 28px;
+      box-shadow:var(--shadow);
+    }
+    .hero .eyebrow{font-size:13px;opacity:.8;margin-bottom:8px;font-weight:700;letter-spacing:.08em}
+    h1{font-size:30px;line-height:1.15;margin:0 0 10px;font-weight:900}
+    .hero p{margin:0;color:#dbeafe;font-size:15px}
+    .modebar{display:flex;gap:8px;margin:14px 0 18px}
+    .modebar a{
+      flex:1;text-align:center;text-decoration:none;padding:12px;border-radius:14px;
+      background:white;color:#111827;font-weight:800;border:1px solid var(--line);
+    }
+    .modebar a.active{background:#111827;color:white;border-color:#111827}
+    .notice{
+      background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;
+      padding:13px 14px;border-radius:16px;font-size:14px;margin:14px 0;
+    }
+    .card{
+      background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+      box-shadow:var(--shadow); padding:18px; margin:14px 0;
+    }
+    .qtop{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+    .qnum{
+      background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:6px 10px;font-size:13px;font-weight:900;
+      white-space:nowrap;
+    }
+    .qtitle{font-size:20px;font-weight:900;margin:4px 0 10px;line-height:1.25}
+    .situation{
+      white-space:pre-line;background:#f8fafc;border:1px solid #e2e8f0;
+      color:#334155;border-radius:16px;padding:13px;font-size:15px;margin:10px 0 14px;
+    }
+    .options{display:grid;gap:10px}
+    .option{
+      display:flex;align-items:center;gap:10px;border:2px solid #e5e7eb;border-radius:16px;
+      padding:14px 13px;background:white;cursor:pointer;font-weight:900;font-size:18px;
+      min-height:58px;
+    }
+    .option input{width:22px;height:22px}
+    .option:has(input:checked){border-color:var(--blue);background:#eff6ff;color:#1d4ed8}
+    .submitBtn,.adminBtn{
+      width:100%;border:0;border-radius:18px;padding:17px 16px;font-size:19px;font-weight:900;
+      color:white;background:var(--blue);box-shadow:0 12px 24px rgba(37,99,235,.22);cursor:pointer;
+      margin-top:16px;
+    }
+    .submitBtn:active,.adminBtn:active{transform:translateY(1px)}
+    .submitBtn:disabled{background:#94a3b8;box-shadow:none;cursor:not-allowed}
+    .adminBtn.secondary{background:#111827}
+    .adminBtn.danger{background:#dc2626}
+    .small{font-size:13px;color:var(--sub)}
+    .done{
+      text-align:center;padding:40px 18px;background:white;border-radius:24px;box-shadow:var(--shadow);margin-top:18px;
+    }
+    .done h2{font-size:28px;margin:0 0 10px}
+    .hidden{display:none!important}
+    .adminHeader{display:grid;gap:10px;margin-bottom:14px}
+    .statGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .stat{background:white;border:1px solid var(--line);border-radius:18px;padding:14px;text-align:center;box-shadow:var(--shadow)}
+    .stat b{font-size:26px;display:block}
+    .resultCard h3{font-size:18px;margin:0 0 12px;line-height:1.3}
+    .bars{display:grid;gap:10px}
+    .barRow{display:grid;grid-template-columns:70px 1fr 58px;gap:8px;align-items:center}
+    .label{font-weight:900;font-size:14px}
+    .track{height:18px;background:#eef2f7;border-radius:999px;overflow:hidden}
+    .fill{height:100%;border-radius:999px;width:0%}
+    .fill.yes{background:var(--green)}
+    .fill.no{background:var(--red)}
+    .fill.hold{background:var(--gray)}
+    .pct{text-align:right;font-weight:900}
+    .adminGate{max-width:420px;margin:30px auto}
+    input.password{
+      width:100%;padding:16px;border-radius:16px;border:1px solid var(--line);font-size:20px;margin:10px 0;
+    }
+    .rowBtns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    textarea{
+      width:100%;height:220px;border-radius:14px;border:1px solid var(--line);padding:12px;font-size:12px;
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    @media (max-width:560px){
+      .wrap{padding:12px 12px 80px}
+      .hero{padding:26px 16px 24px}
+      h1{font-size:27px}
+      .card{padding:15px;border-radius:20px}
+      .qtitle{font-size:19px}
+      .situation{font-size:14px}
+      .option{font-size:18px;padding:15px 12px}
+      .statGrid{grid-template-columns:1fr}
+      .rowBtns{grid-template-columns:1fr}
+      .barRow{grid-template-columns:64px 1fr 52px}
+    }
+    @media print{
+      body{background:#fff}.hero,.modebar,.adminHeader,.adminGate,.notice{display:none!important}
+      .card{box-shadow:none;break-inside:avoid}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">GOODINSIGHT LIVE POLL</div>
+      <h1>AI 활용 찬반 투표</h1>
+      <p>교육생은 결과를 보지 않고 투표합니다. 강사는 최종 결과를 확인해 화면으로 공유할 수 있습니다.</p>
+    </section>
+
+    <div class="modebar">
+      <a href="./index.html" id="studentTab">교육생 투표</a>
+      <a href="?admin=1" id="adminTab">강사용 결과</a>
+    </div>
+
+    <main id="studentView">
+      <div class="notice">13개 안건에 대해 하나씩 선택한 뒤 맨 아래의 <b>투표 제출</b> 버튼을 눌러주세요.</div>
+      <form id="voteForm"></form>
+      <button class="submitBtn" id="submitBtn">투표 제출하기</button>
+      <p class="small">※ 중복 제출을 줄이기 위해 같은 기기에서는 1회 제출 후 완료 화면이 표시됩니다.</p>
+    </main>
+
+    <main id="doneView" class="hidden">
+      <div class="done">
+        <h2>투표가 제출되었습니다.</h2>
+        <p>참여해주셔서 감사합니다.</p>
+      </div>
+    </main>
+
+    <main id="adminView" class="hidden">
+      <div class="adminGate card" id="adminGate">
+        <h2>강사용 결과 확인</h2>
+        <p class="small">비밀번호를 입력하면 최종 집계 결과를 볼 수 있습니다.</p>
+        <input class="password" id="adminPw" type="password" placeholder="비밀번호" />
+        <button class="adminBtn" id="loginBtn">결과 보기</button>
+      </div>
+
+      <section id="adminPanel" class="hidden">
+        <div class="adminHeader">
+          <div class="statGrid">
+            <div class="stat"><span class="small">제출 인원</span><b id="totalPeople">0</b></div>
+            <div class="stat"><span class="small">총 응답 수</span><b id="totalAnswers">0</b></div>
+            <div class="stat"><span class="small">마지막 집계</span><b id="lastLoaded" style="font-size:16px">-</b></div>
+          </div>
+          <div class="rowBtns">
+            <button class="adminBtn" id="refreshBtn">결과 새로고침</button>
+            <button class="adminBtn secondary" id="copyBtn">결과 요약 복사</button>
+          </div>
+          <div class="rowBtns">
+            <button class="adminBtn secondary" id="downloadBtn">CSV 다운로드</button>
+            <button class="adminBtn danger" id="resetBtn">전체 결과 초기화</button>
+          </div>
+        </div>
+        <div id="results"></div>
+        <div class="card">
+          <h3>복사용 결과 요약</h3>
+          <textarea id="summaryBox" readonly></textarea>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAVOaHn1lb0JTFUobWw40tG2TawCre79zU",
+  authDomain: "ai-voting-5e157.firebaseapp.com",
+  databaseURL: "https://ai-voting-5e157-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "ai-voting-5e157",
+  storageBucket: "ai-voting-5e157.firebasestorage.app",
+  messagingSenderId: "521813866375",
+  appId: "1:521813866375:web:9da674f89b80bcb6b0c522",
+  measurementId: "G-M0X6V91WJ3"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const SESSION_ID = "ai-vote-2026-001";
+const ADMIN_PASSWORD = "1004";
+
+const questions = [
+  {
+    title:"AI 결과물을 사용했는데 어디까지 밝혀야 하는가?",
+    situation:"직원이 보고서의 80%를 AI로 작성했습니다.\n최종 수정은 본인이 했습니다.\n상사에게 “AI를 사용했습니다.”라고 말해야 할까요?",
+    options:["찬성","반대","유보"]
+  },
+  {
+    title:"AI 때문에 업무시간이 절반으로 줄었다. 남은 시간은?",
+    situation:"예전에는 8시간 걸리던 업무를 AI 덕분에 2시간 만에 끝냈습니다.\n남은 6시간은 어떻게 써야 할까요?",
+    options:["새로운 일을 해야 한다","자유롭게 써도 된다","유보"]
+  },
+  {
+    title:"AI가 상사보다 더 좋은 아이디어를 냈다.",
+    situation:"상사는 “내 의견대로 수정하세요.”라고 말합니다.\nAI는 다른 방식이 더 좋다고 제안합니다.\n여러분은 무엇을 따르겠습니까?",
+    options:["AI 의견","상사 의견","유보"]
+  },
+  {
+    title:"AI가 만든 자료가 더 뛰어나다. 성과는 누구의 것인가?",
+    situation:"신입이 AI를 활용해 팀장보다 훨씬 좋은 PPT를 만들었습니다.\n이 성과는 누구의 것일까요?",
+    options:["개인","AI","조직"]
+  },
+  {
+    title:"AI 사용 능력을 인사평가에 넣어야 하는가?",
+    situation:"AI를 잘 쓰는 사람은 생산성이 높습니다.\n반면 AI를 못 쓰는 사람을 불공정하게 평가하게 될 수도 있습니다.",
+    options:["찬성","반대","유보"]
+  },
+  {
+    title:"AI를 사용하지 않는 직원은 문제인가?",
+    situation:"앞으로 AI를 안 쓰는 직원은 개인의 자유일까요, 아니면 직무역량 부족일까요?",
+    options:["개인의 자유","직무역량 부족","유보"]
+  },
+  {
+    title:"AI가 작성한 문장을 그대로 제출해도 되는가?",
+    situation:"보도자료, 기획서, 회의록, 보고서를 AI가 거의 다 작성했습니다.\n수정은 거의 하지 않았습니다.\n내 이름으로 제출해도 될까요?",
+    options:["가능하다","불가능하다","유보"]
+  },
+  {
+    title:"AI가 직원을 평가하도록 해야 하는가?",
+    situation:"AI가 KPI, 업무량, 성과를 분석해서 승진 추천까지 합니다.\n이 방식은 공정할까요?",
+    options:["공정하다","위험하다","유보"]
+  },
+  {
+    title:"AI가 면접관이면 더 공정할까?",
+    situation:"사람 면접관보다 AI 면접관이 더 공정할까요?\n아니면 더 위험할까요?",
+    options:["더 공정하다","더 위험하다","유보"]
+  },
+  {
+    title:"AI 때문에 관리자가 줄어들까?",
+    situation:"중간관리자의 주요 업무가 보고, 자료 작성, 일정 관리라면 AI가 대부분 수행할 수 있습니다.\n그렇다면 관리자는 줄어들까요?",
+    options:["줄어든다","줄어들지 않는다","유보"]
+  },
+  {
+    title:"AI가 내 일자리를 없애는 것이 아니라...",
+    situation:"AI가 일자리를 없애는 것이 아니라 AI를 잘 쓰는 사람이 내 일자리를 가져가는 것 아닐까요?",
+    options:["그렇다","아니다","유보"]
+  },
+  {
+    title:"회사는 직원의 AI 대화를 볼 수 있어야 하는가?",
+    situation:"회사 계정으로 ChatGPT를 사용합니다.\n회사는 직원의 AI 대화를 볼 권리가 있을까요?",
+    options:["볼 수 있어야 한다","보면 안 된다","유보"]
+  },
+  {
+    title:"AI가 만든 아이디어는 누구의 것인가?",
+    situation:"AI가 엄청난 아이디어를 냈습니다.\n특허를 낸다면 발명자는 누구일까요?",
+    options:["사용자","회사/조직","AI 또는 기타"]
+  }
+];
+
+const isAdmin = new URLSearchParams(location.search).get("admin") === "1";
+const studentView = document.getElementById("studentView");
+const doneView = document.getElementById("doneView");
+const adminView = document.getElementById("adminView");
+document.getElementById("studentTab").classList.toggle("active", !isAdmin);
+document.getElementById("adminTab").classList.toggle("active", isAdmin);
+
+if(isAdmin){
+  studentView.classList.add("hidden");
+  adminView.classList.remove("hidden");
+} else {
+  renderVoteForm();
+  if(localStorage.getItem("aiVoteSubmitted_" + SESSION_ID) === "1"){
+    studentView.classList.add("hidden");
+    doneView.classList.remove("hidden");
+  }
+}
+
+function renderVoteForm(){
+  const form = document.getElementById("voteForm");
+  form.innerHTML = questions.map((q,i)=>`
+    <section class="card">
+      <div class="qtop"><span class="qnum">Q${i+1} / ${questions.length}</span></div>
+      <div class="qtitle">${escapeHtml(q.title)}</div>
+      <div class="situation">${escapeHtml(q.situation)}</div>
+      <div class="options">
+        ${q.options.map(opt=>`
+          <label class="option">
+            <input type="radio" name="q${i}" value="${escapeAttr(opt)}" required>
+            <span>${escapeHtml(opt)}</span>
+          </label>`).join("")}
+      </div>
+    </section>
+  `).join("");
+}
+
+document.getElementById("submitBtn")?.addEventListener("click", async ()=>{
+  const btn = document.getElementById("submitBtn");
+  const form = document.getElementById("voteForm");
+  if(!form.reportValidity()) return;
+
+  const answers = {};
+  questions.forEach((q,i)=>{
+    const selected = form.querySelector(`input[name="q${i}"]:checked`);
+    answers[`q${i}`] = selected ? selected.value : "";
+  });
+
+  const participantId = localStorage.getItem("aiVoteUserId") || cryptoRandomId();
+  localStorage.setItem("aiVoteUserId", participantId);
+
+  btn.disabled = true;
+  btn.textContent = "제출 중입니다...";
+
+  try{
+    await db.ref(`sessions/${SESSION_ID}/responses/${participantId}`).set({
+      createdAt: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      answers
+    });
+    localStorage.setItem("aiVoteSubmitted_" + SESSION_ID, "1");
+    studentView.classList.add("hidden");
+    doneView.classList.remove("hidden");
+    window.scrollTo({top:0, behavior:"smooth"});
+  }catch(e){
+    alert("제출 중 오류가 발생했습니다. 네트워크를 확인한 뒤 다시 시도해주세요.\n" + e.message);
+    btn.disabled = false;
+    btn.textContent = "투표 제출하기";
+  }
+});
+
+document.getElementById("loginBtn")?.addEventListener("click", ()=>{
+  const pw = document.getElementById("adminPw").value.trim();
+  if(pw !== ADMIN_PASSWORD){
+    alert("비밀번호가 다릅니다.");
+    return;
+  }
+  document.getElementById("adminGate").classList.add("hidden");
+  document.getElementById("adminPanel").classList.remove("hidden");
+  loadResults();
+});
+document.getElementById("refreshBtn")?.addEventListener("click", loadResults);
+document.getElementById("copyBtn")?.addEventListener("click", async ()=>{
+  const text = document.getElementById("summaryBox").value;
+  await navigator.clipboard.writeText(text);
+  alert("결과 요약을 복사했습니다.");
+});
+document.getElementById("downloadBtn")?.addEventListener("click", downloadCsv);
+document.getElementById("resetBtn")?.addEventListener("click", async ()=>{
+  const ok = confirm("정말 전체 투표 결과를 초기화할까요? 이 작업은 되돌릴 수 없습니다.");
+  if(!ok) return;
+  const pw = prompt("초기화 비밀번호를 다시 입력하세요.");
+  if(pw !== ADMIN_PASSWORD){ alert("비밀번호가 다릅니다."); return; }
+  await db.ref(`sessions/${SESSION_ID}/responses`).remove();
+  alert("초기화했습니다.");
+  loadResults();
+});
+
+let latestRows = [];
+
+async function loadResults(){
+  const snap = await db.ref(`sessions/${SESSION_ID}/responses`).once("value");
+  const data = snap.val() || {};
+  const rows = Object.entries(data).map(([id,v])=>({id, ...v}));
+  latestRows = rows;
+
+  const totalPeople = rows.length;
+  const result = questions.map((q,i)=>{
+    const counts = {};
+    q.options.forEach(o=>counts[o]=0);
+    rows.forEach(r=>{
+      const val = r.answers?.[`q${i}`];
+      if(val) counts[val] = (counts[val] || 0) + 1;
+    });
+    return {question:q, index:i, counts, total:Object.values(counts).reduce((a,b)=>a+b,0)};
+  });
+
+  document.getElementById("totalPeople").textContent = totalPeople;
+  document.getElementById("totalAnswers").textContent = result.reduce((a,r)=>a+r.total,0);
+  document.getElementById("lastLoaded").textContent = new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
+
+  renderResults(result, totalPeople);
+  document.getElementById("summaryBox").value = buildSummary(result, totalPeople);
+}
+
+function renderResults(result, totalPeople){
+  const results = document.getElementById("results");
+  results.innerHTML = result.map(r=>{
+    const total = r.total || 0;
+    const bars = Object.entries(r.counts).map(([label,count])=>{
+      const pct = total ? Math.round(count/total*100) : 0;
+      const cls = label.includes("찬성") || label.includes("가능") || label.includes("AI 의견") || label.includes("공정") || label.includes("그렇다") || label.includes("볼 수") || label.includes("개인") || label.includes("사용자") || label.includes("새로운") || label.includes("직무") || label.includes("줄어든다") ? "yes"
+                : label.includes("반대") || label.includes("불가능") || label.includes("상사") || label.includes("위험") || label.includes("아니다") || label.includes("보면") || label.includes("자유롭게") || label.includes("자유") || label.includes("줄어들지") ? "no" : "hold";
+      return `<div class="barRow">
+        <div class="label">${escapeHtml(label)}</div>
+        <div class="track"><div class="fill ${cls}" style="width:${pct}%"></div></div>
+        <div class="pct">${pct}%</div>
+      </div>
+      <div class="small" style="margin-left:78px;margin-top:-7px">${count}명</div>`;
+    }).join("");
+    return `<section class="card resultCard">
+      <h3>Q${r.index+1}. ${escapeHtml(r.question.title)}</h3>
+      <div class="bars">${bars}</div>
+      <p class="small">응답 ${total}명</p>
+    </section>`;
+  }).join("");
+}
+
+function buildSummary(result, totalPeople){
+  const lines = [];
+  lines.push(`[AI 활용 찬반 투표 결과]`);
+  lines.push(`제출 인원: ${totalPeople}명`);
+  lines.push("");
+  result.forEach(r=>{
+    const total = r.total || 0;
+    lines.push(`Q${r.index+1}. ${r.question.title}`);
+    Object.entries(r.counts).forEach(([label,count])=>{
+      const pct = total ? Math.round(count/total*100) : 0;
+      lines.push(`- ${label}: ${count}명 (${pct}%)`);
+    });
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
+function downloadCsv(){
+  const headers = ["participantId","createdAt",...questions.map((q,i)=>`Q${i+1}`)];
+  const csvRows = [headers];
+  latestRows.forEach(r=>{
+    csvRows.push([
+      r.id,
+      r.createdAt || "",
+      ...questions.map((q,i)=>r.answers?.[`q${i}`] || "")
+    ]);
+  });
+  const csv = csvRows.map(row=>row.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob(["\ufeff"+csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ai-vote-results-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(v){ return `"${String(v).replaceAll('"','""')}"`; }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+function escapeAttr(s){ return escapeHtml(s); }
+function cryptoRandomId(){
+  if(window.crypto?.getRandomValues){
+    const arr = new Uint32Array(4); crypto.getRandomValues(arr);
+    return Array.from(arr).map(x=>x.toString(16)).join("");
+  }
+  return "u_" + Math.random().toString(36).slice(2) + Date.now();
+}
+</script>
+</body>
+</html>
